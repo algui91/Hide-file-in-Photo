@@ -11,6 +11,15 @@
 
 using namespace std;
 
+//Calcula el tamaño en bytes del fichero
+int get_file_size(ifstream& f){
+	f.seekg(0, std::ios_base::end);
+	size_t size = f.tellg();
+	f.seekg(0, std::ios_base::beg);
+
+	return size * 8;
+}
+
 
 int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
 
@@ -22,10 +31,9 @@ int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
 	ifstream f(sms);
 	if (f) {
 
-cout << basename(sms);
 		strcpy(sms,basename(sms));
 
-		//Cabecera para identificar el nombre del archivo
+		//Cabecera que indica el comienzo del nombre del archivo
 		buffer[0] = 0xff;
 
 		//Calculo el pixel donde tiene que terminar el nombre del archivo
@@ -34,9 +42,7 @@ cout << basename(sms);
 
 		//Escribo el nombre del archivo a ocultar
 		for (int i = 1; i <= fin_cabecera - 1 ; i++ ){
-			//TODO: hacerlo en una operacion lógica
-			buffer[i] = buffer[i] >> 1; //Ponemos a 0 el ultimo bit haciendo dos desplazamientos
-			buffer[i] = buffer[i] << 1;
+			buffer[i] &= 0xfe; //hacemos 0 último bit con máscara 11111110
 			//TODO: Hacer con dos for
 			if (bitsLetraRestantes < 0) {
 				bitsLetraRestantes = 7;
@@ -51,11 +57,7 @@ cout << basename(sms);
 		bitsLetraRestantes 		  = 7;
 		mask					  = 0x80;
 
-		//TODO: (MEter en función) Calcular el tamaño en bytes del fichero
-		f.seekg(0, std::ios_base::end);
-		size_t size = f.tellg();
-		f.seekg(0, std::ios_base::beg);
-		int tamanio_en_bits = size*8;
+		int tamanio_en_bits = get_file_size(f);
 
 		f.read(&letra, 1);
 		// i empieza justo despues del fin de la cabecera del nombre
@@ -63,8 +65,7 @@ cout << basename(sms);
 		// el indice sumando el desplazamiento que ya acarreamos + los bytes del archivo pasados a bits
 		int datos_fichero = fin_cabecera + 1;
 		for (int i = datos_fichero; i <= tamanio_en_bits + datos_fichero; i++){
-			buffer[i] = buffer[i] >> 1; //Ponemos a 0 el ultimo bit haciendo dos desplazamientos
-			buffer[i] = buffer[i] << 1;
+			buffer[i] &= 0xfe;
 			if (bitsLetraRestantes < 0) {
 				bitsLetraRestantes = 7;
 				mask = 0x80;
@@ -80,44 +81,12 @@ cout << basename(sms);
 		unsigned char fin_contenido = 0xff;
 		for (int i = tamanio_en_bits + datos_fichero + 1;
 				i < tamanio_en_bits + datos_fichero + 1 + 8; i++) {
-			buffer[i] = buffer[i] >> 1; //Ponemos a 0 el ultimo bit haciendo dos desplazamientos
-			buffer[i] = buffer[i] << 1;
+			buffer[i] &= 0xfe;
 			char c = (fin_contenido  & mask) >> bitsLetraRestantes--;
 			mask >>= 1;
 			buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
 		}
 		cout << "FIN: " << tamanio_en_bits + datos_fichero + 1;
-
-
-	/*
-	unsigned short int indiceLetra		  = 0;
-	char letra							  = sms[indiceLetra];
-	short int bitsLetraRestantes 		  = 7;
-	unsigned char mask					  = 0x80; //Empezamos por el bit más significativo (10000000)
-
-	//Imagen demasiado pequeña para la cadena suministrada
-	if (tamImage < tamSms)
-		return -1;
-
-	for (int i = 0; i <= tamImage && i < tamSms; i++){
-		buffer[i] = buffer[i] >> 1; //Ponemos a 0 el ultimo bit haciendo dos desplazamientos
-		buffer[i] = buffer[i] << 1;
-
-		if (bitsLetraRestantes < 0){
-			bitsLetraRestantes = 7;
-			mask			   = 0x80;
-			letra 			   = sms[++indiceLetra];
-		}
-		// Sacamos el bit de la letra en su posición y lo desplazamos a la pos menos significativa
-		char c = (letra & mask) >> bitsLetraRestantes--;
-		mask >>= 1;
-		buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
-		//buffer[i] ^= 0xff; //Negativo e invertido
-		//buffer[i] = ~buffer[i];
-		//buffer[i] >>= 1; //Más oscura
-		//buffer[i] <<=1; //Más clara
-	}
-*/
 	}
 	return 0;
 }
@@ -177,25 +146,6 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 			if(!finCadena)
 				return -2; //Si finCadena == false, no hemos encontrado caracter \0
 	}
-
-
-	//for (int i = 0; i < tamImage && /*sms[indice] != '\0'*/!finCadena; i++){
-	/*	value = value << 1 | (buffer[i]&0x01); //vamos almacenando en value los 8 bits
-		//Cuando recorramos 7 bits, lo almacenamos al array, almacenamos cada 8 iteraciones (1byte).
-		//Para que el if sea mas rápido (Ya que es una op ||), pongo la condicion i == 7 al final, ya que solo se va a evaluar una vez
-		if (((i-7)%8) == 0 || i == 7){
-			sms[indice] = value;
-			value = 0;
-			if(sms[indice++] == '\0')
-				finCadena = true;
-			if(indice > tamSMS)
-				return -1; //cadena de mayor tamaño que que la cadena donde almacenarlo
-		}
-	}
-
-	if(!finCadena)
-		return -2; //Si finCadena == false, no hemos encontrado caracter \0
-	*/
 
 	return 0;
 }
