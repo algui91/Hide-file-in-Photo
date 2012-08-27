@@ -11,24 +11,54 @@
 
 using namespace std;
 
+const bool WRITE_FILE_DATA = true;
+const bool WRITE_FILE_NAME = false;
+
 //Calcula el tamaño en bytes del fichero
 int get_file_size(ifstream& f){
 	f.seekg(0, std::ios_base::end);
 	size_t size = f.tellg();
 	f.seekg(0, std::ios_base::beg);
 
-	return size * 8;
+	return size;
+}
+
+void write_bit_by_bit(unsigned char buffer[], ifstream& f,int from, int to, char sms[], bool type){
+
+	unsigned short int indiceLetra		  = 0;
+	short int bitsLetraRestantes 		  = 7;
+	unsigned char mask					  = 0x80; //Empezamos por el bit más significativo (10000000)
+
+	char* file_buffer;
+
+	if(type){ //Write file data
+		int number_of_bytes_to_read = get_file_size(f);
+		file_buffer = new char[number_of_bytes_to_read];
+		f.read(file_buffer, number_of_bytes_to_read);
+	}
+
+	const char* place_to_get_stuff_from = type ? file_buffer : sms;
+	char letra = place_to_get_stuff_from[0];
+
+	for (int i = from; i <= to; i++) {
+		buffer[i] &= 0xfe; //hacemos 0 último bit con máscara 11111110
+		//TODO: Hacer con dos for
+		if (bitsLetraRestantes < 0) {
+			bitsLetraRestantes = 7;
+			mask = 0x80;
+			letra = place_to_get_stuff_from[++indiceLetra];//letra = sms[++indiceLetra];
+		}
+		char c = (letra & mask) >> bitsLetraRestantes--;
+		mask >>= 1;
+		buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
+	}
 }
 
 
 int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
 
-	unsigned short int indiceLetra		  = 0;
-	char letra							  = sms[indiceLetra];
-	short int bitsLetraRestantes 		  = 7;
-	unsigned char mask					  = 0x80; //Empezamos por el bit más significativo (10000000)
-
 	ifstream f(sms);
+
 	if (f) {
 
 		strcpy(sms,basename(sms));
@@ -41,48 +71,26 @@ int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
 		buffer[fin_cabecera] = 0xff;
 
 		//Escribo el nombre del archivo a ocultar
-		for (int i = 1; i <= fin_cabecera - 1 ; i++ ){
-			buffer[i] &= 0xfe; //hacemos 0 último bit con máscara 11111110
-			//TODO: Hacer con dos for
-			if (bitsLetraRestantes < 0) {
-				bitsLetraRestantes = 7;
-				mask = 0x80;
-				letra = sms[++indiceLetra];
-			}
-			char c = (letra & mask) >> bitsLetraRestantes--;
-			mask >>= 1;
-			buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
-		}
+		write_bit_by_bit(buffer, f, 1, fin_cabecera -1, sms, WRITE_FILE_NAME);
 
-		bitsLetraRestantes 		  = 7;
-		mask					  = 0x80;
+		int tamanio_en_bits = get_file_size(f) * 8;
 
-		int tamanio_en_bits = get_file_size(f);
-
-		f.read(&letra, 1);
 		// i empieza justo despues del fin de la cabecera del nombre
 		// el for acaba cuando escribe todos los caracteres del fichero, hay que calcular
 		// el indice sumando el desplazamiento que ya acarreamos + los bytes del archivo pasados a bits
 		int datos_fichero = fin_cabecera + 1;
-		for (int i = datos_fichero; i <= tamanio_en_bits + datos_fichero; i++){
-			buffer[i] &= 0xfe;
-			if (bitsLetraRestantes < 0) {
-				bitsLetraRestantes = 7;
-				mask = 0x80;
-				f.read(&letra, 1);
-			}
-			char c = (letra & mask) >> bitsLetraRestantes--;
-			mask >>= 1;
-			buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
-		}
-		//TODO: el fin de contenido del ficherco hay que almacenarlos como el resto de contenido
-		bitsLetraRestantes 		  = 7;
-		mask					  = 0x80;
+		write_bit_by_bit(buffer, f, datos_fichero, tamanio_en_bits + datos_fichero, sms, WRITE_FILE_DATA);
+
+		//Escribo 0xff para indicar EOF de los datos
 		unsigned char fin_contenido = 0xff;
+
+		short int bitsLetraRestantes 		  = 7;
+		unsigned char mask					  = 0x80; //Empezamos por el bit más significativo (10000000)
+
 		for (int i = tamanio_en_bits + datos_fichero + 1;
 				i < tamanio_en_bits + datos_fichero + 1 + 8; i++) {
 			buffer[i] &= 0xfe;
-			char c = (fin_contenido  & mask) >> bitsLetraRestantes--;
+			char c = (fin_contenido & mask) >> bitsLetraRestantes--;
 			mask >>= 1;
 			buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
 		}
