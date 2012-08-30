@@ -23,35 +23,38 @@ int get_file_size(ifstream& f){
 	return size;
 }
 
-void write_bit_by_bit(unsigned char buffer[], ifstream& f,int from, int to, char sms[], bool type){
+int write_bit_by_bit(unsigned char buffer[], ifstream& f,int from, int to, char sms[], bool type){
 
 	unsigned short int indiceLetra		  = 0;
-	short int bitsLetraRestantes 		  = 7;
 	unsigned char mask					  = 0x80; //Empezamos por el bit más significativo (10000000)
 
-	char* file_buffer;
+	char* file_buffer = 0;
 
 	if(type){ //Write file data
-		int number_of_bytes_to_read = get_file_size(f);
+		int number_of_bytes_to_read = to;//get_file_size(f); //TODO, se lo paso como parametro, no calcular de nuevo
 		file_buffer = new char[number_of_bytes_to_read];
 		f.read(file_buffer, number_of_bytes_to_read);
 	}
 
 	const char* place_to_get_stuff_from = type ? file_buffer : sms;
 	char letra = place_to_get_stuff_from[0];
+	int indice = from;
 
-	for (int i = from; i <= to; i++) {
-		buffer[i] &= 0xfe; //hacemos 0 último bit con máscara 11111110
-		//TODO: Hacer con dos for
-		if (bitsLetraRestantes < 0) {
-			bitsLetraRestantes = 7;
-			mask = 0x80;
-			letra = place_to_get_stuff_from[++indiceLetra];//letra = sms[++indiceLetra];
+	for (int i = 0; i < to; i++) { //TODO antes <=
+		for (int k = 7; k >= 0; k--){
+			char c = (letra & mask) >> k;
+			mask >>= 1;
+
+			buffer[indice] &= 0xfe; //hacemos 0 último bit con máscara 11111110
+			buffer[indice++] ^= c;
 		}
-		char c = (letra & mask) >> bitsLetraRestantes--;
-		mask >>= 1;
-		buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
+		letra = place_to_get_stuff_from[++indiceLetra];//letra = sms[++indiceLetra];
+		mask = 0x80;
 	}
+	if (file_buffer) delete[] file_buffer;
+		place_to_get_stuff_from = 0;
+
+	return indice;
 }
 
 
@@ -67,34 +70,33 @@ int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
 		buffer[0] = 0xff;
 
 		//Calculo el pixel donde tiene que terminar el nombre del archivo
-		int fin_cabecera = strlen(sms)*8 + 1;
+		int fin_cabecera = strlen(sms) * 8 +1;
 		buffer[fin_cabecera] = 0xff;
 
 		//Escribo el nombre del archivo a ocultar
-		write_bit_by_bit(buffer, f, 1, fin_cabecera -1, sms, WRITE_FILE_NAME);
+		write_bit_by_bit(buffer, f, 1, strlen(sms), sms, WRITE_FILE_NAME);//TODO el 1
 
-		int tamanio_en_bits = get_file_size(f) * 8;
+		int tamanio_en_bytes = get_file_size(f) /** 8*/;
 
 		// i empieza justo despues del fin de la cabecera del nombre
 		// el for acaba cuando escribe todos los caracteres del fichero, hay que calcular
 		// el indice sumando el desplazamiento que ya acarreamos + los bytes del archivo pasados a bits
 		int datos_fichero = fin_cabecera + 1;
-		write_bit_by_bit(buffer, f, datos_fichero, tamanio_en_bits + datos_fichero, sms, WRITE_FILE_DATA);
+		int ind = write_bit_by_bit(buffer, f, datos_fichero, tamanio_en_bytes/*tamanio_en_bytes + datos_fichero*/, sms, WRITE_FILE_DATA);
 
 		//Escribo 0xff para indicar EOF de los datos
-		unsigned char fin_contenido = 0xff;
+		unsigned char fin_contenido = 0x7f;
 
 		short int bitsLetraRestantes 		  = 7;
 		unsigned char mask					  = 0x80; //Empezamos por el bit más significativo (10000000)
 
-		for (int i = tamanio_en_bits + datos_fichero + 1;
-				i < tamanio_en_bits + datos_fichero + 1 + 8; i++) {
+		for (int i = ind;	i < ind+8; i++) {
 			buffer[i] &= 0xfe;
 			char c = (fin_contenido & mask) >> bitsLetraRestantes--;
 			mask >>= 1;
 			buffer[i] ^= c; //Almacenamos en el ultimo bit del pixel el valor del caracter
 		}
-		cout << "FIN: " << tamanio_en_bits + datos_fichero + 1;
+		cout << "FIN: " << tamanio_en_bytes + datos_fichero + 1;
 	}
 	return 0;
 }
@@ -115,8 +117,8 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 	while(ptr[in++] != 0xff);
 	ptr = 0;
 
-	//TODO poner en funciones, getName, getRawData
-	for (int i = 1; i <= in; i++) {
+	//TODO poner en funciones, getName, getRawData O, read_bit_by_bit
+	for (int i = 1; i <= in; i++) { //TODO, despercicio iteraciones
 		value = value << 1 | (buffer[i] & 0x01); //vamos almacenando en value los 8 bits
 		//Cuando recorramos 7 bits, lo almacenamos al array, almacenamos cada 8 iteraciones (1byte).
 		//Para que el if sea mas rápido (Ya que es una op ||), pongo la condicion i == 7 al final, ya que solo se va a evaluar una vez
@@ -145,7 +147,7 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 						fin_datos = true;
 						continue;
 					}
-					f.write(&value,1);
+					f.write(&value,1); //TODO, ir almacenanto en array y luego escribir a archivo
 					value = 0;
 					iteraciones_8 = 1;
 				}
