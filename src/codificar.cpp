@@ -22,6 +22,7 @@ int get_file_size(ifstream& f){
 
 	return size;
 }
+
 //TODO hacer que ifstream sea opcional
 int write_bit_by_bit(unsigned char buffer[], ifstream& f, int from, int to, char sms[], bool type){
 
@@ -97,9 +98,8 @@ int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
 
 int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 
-	int indice		  		  = 0;
+	int indice_sms	  		  = 0;
 	char value 		  		  = 0;
-	bool finCadena 	  		  = false;
 
 	unsigned char* ptr;
 	int in = 1;
@@ -109,44 +109,34 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 	while(ptr[in++] != 0xff);
 	ptr = 0;
 
-	//TODO poner en funciones, getName, getRawData O, read_bit_by_bit
-	for (int i = 1; i <= in; i++) { //TODO, despercicio iteraciones
-		value = value << 1 | (buffer[i] & 0x01); //vamos almacenando en value los 8 bits
-		//Cuando recorramos 7 bits, lo almacenamos al array, almacenamos cada 8 iteraciones (1byte).
-		//Para que el if sea mas rápido (Ya que es una op ||), pongo la condicion i == 7 al final, ya que solo se va a evaluar una vez
-		if (((i - 8) % 8) == 0 || i == 8) {
-			sms[indice++] = value;
-			value = 0;
-			if (indice > tamSMS)
-				return -1; //cadena de mayor tamaño que que la cadena donde almacenarlo
-		}
+	int i = 1;
+	while (i != in-1){
+		for (int k = 8; k > 0; k--)
+			value = value << 1 | (buffer[i++] & 0x01); //vamos almacenando en value los 8 bits
+		sms[indice_sms++] = value;
+		value = 0;
+		if (indice_sms > tamSMS)
+			return -1; //cadena de mayor tamaño que que la cadena donde almacenarlo
 	}
+
 	//Ahora en sms está el nombre del fichero, lo creamos:.
 	cout << sms;
 	ofstream f(sms);
-	if(f){
-		// TODO: getRawData
-		//seguimos leyendo hasta que encontremos un byte a 0xff, que indica el fin del archivo
+	if (f) {
+		//seguimos leyendo hasta que encontremos un byte a 0x7f, que indica el fin del archivo
 		bool fin_datos = false;
-		int iteraciones_8 = 1;
+		int indice = in;
 		value = 0;
-		for (int i = in; i < tamImage && !fin_datos; i++){
-				value = value << 1 | (buffer[i]&0x01); //vamos almacenando en value los 8 bits
-				//Cuando recorramos 7 bits, lo almacenamos al array, almacenamos cada 8 iteraciones (1byte).
-				//Para que el if sea mas rápido (Ya que es una op ||), pongo la condicion i == 7 al final, ya que solo se va a evaluar una vez
-				if ((iteraciones_8++) == 8){
-					if(value == 0x7f){ //TODO revisar por qué no es 0xff
-						fin_datos = true;
-						continue;
-					}
-					f.write(&value,1); //TODO, ir almacenanto en array y luego escribir a archivo
-					value = 0;
-					iteraciones_8 = 1;
-				}
+		for (int i = in; i < tamImage && !fin_datos; i++) {
+			for (int k = 0; k < 8; k++)
+				value = value << 1 | (buffer[indice++] & 0x01); //vamos almacenando en value los 8 bits
+			if (value == 0x7f) {
+				fin_datos = true;
+				continue;
 			}
-
-			if(!finCadena)
-				return -2; //Si finCadena == false, no hemos encontrado caracter \0
+			f.write(&value, 1); //TODO, ir almacenanto en array y luego escribir a archivo
+			value = 0;
+		}
 	}
 
 	return 0;
