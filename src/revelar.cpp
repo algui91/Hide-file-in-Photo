@@ -39,7 +39,7 @@ void descifrarSMS(char inPutImage[], int& filas, int& columnas, unsigned char bu
 		switch (revelar(buffer, tamImage, sms, MAX_SMS)) {
 		case 0:
 			//cout << "DEBUG: " << strlen(sms);
-			cout << "SMS: " << sms << endl;
+			cout << "Descifrado el archivo: " << sms << " en la imagen " << inPutImage <<  endl;
 			break;
 		case -1:
 			cout << "Cadena de mayor tamaño que que la cadena donde almacenarlo" << endl;
@@ -53,13 +53,13 @@ void descifrarSMS(char inPutImage[], int& filas, int& columnas, unsigned char bu
 }
 
 int main(int argc, char* argv[]){
-	const int MAX_BUFFER = 1000000;
-	const int MAX_NAME	 = 100;
 
-	unsigned char buffer[MAX_BUFFER];
 	int filas, columnas;
 
 	TipoImagen tipo = LeerTipoImagen(argv[1], filas, columnas);
+
+	const int MAX_BUFFER = filas * columnas;
+	unsigned char buffer[MAX_BUFFER];
 
 	switch (tipo) {
 		case IMG_PGM:

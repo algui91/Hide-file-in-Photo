@@ -9,6 +9,9 @@
 
 #ifndef CODIFICAR_H_
 #define CODIFICAR_H_
+#include <iostream>
+
+int get_file_size(std::ifstream& );
 
 /**
   * @brief Oculta un mensaje en los bytes de la imagen dada
@@ -23,7 +26,7 @@
   * @pre buffer debe ser una zona de memoria suficientemente grande como para
   * almacenar @a filas x @a columnas bytes de datos de la imagen.
   */
-int ocultar(unsigned char[],int , char[], int);
+int ocultar(unsigned char[],int , char[]);
 
 /**
   * @brief Revela un mensaje en los bytes de la imagen dada

@@ -5,7 +5,7 @@
  *      @author: Alejandro Alcalde
  */
 #include "../include/codificar.h"
-#include <iostream>
+///#include <iostream>
 #include <fstream>
 #include <string.h>
 
@@ -13,15 +13,6 @@ using namespace std;
 
 const bool WRITE_FROM_FILE = true;
 const bool WRITE_FROM_ARRAY = false;
-
-//Calcula el tamaño en bytes del fichero
-int get_file_size(ifstream& f){
-	f.seekg(0, std::ios_base::end);
-	size_t size = f.tellg();
-	f.seekg(0, std::ios_base::beg);
-
-	return size;
-}
 
 //TODO hacer que ifstream sea opcional
 int write_bit_by_bit(unsigned char buffer[], ifstream& f, int from, int to, char sms[], bool type){
@@ -59,7 +50,7 @@ int write_bit_by_bit(unsigned char buffer[], ifstream& f, int from, int to, char
 }
 
 
-int ocultar(unsigned char buffer[],int tamImage, char sms[], int tamSms){
+int ocultar(unsigned char buffer[],int tamImage, char sms[]){
 
 	ifstream f(sms);
 
@@ -120,7 +111,6 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 	}
 
 	//Ahora en sms está el nombre del fichero, lo creamos:.
-	cout << sms;
 	ofstream f(sms);
 	if (f) {
 		//seguimos leyendo hasta que encontremos un byte a 0x7f, que indica el fin del archivo
@@ -140,4 +130,13 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 	}
 
 	return 0;
+}
+
+//Calcula el tamaño en bytes del fichero
+int get_file_size(ifstream& f){
+	f.seekg(0, std::ios_base::end);
+	size_t size = f.tellg();
+	f.seekg(0, std::ios_base::beg);
+
+	return size;
 }

@@ -9,7 +9,7 @@
 #include "../include/codificar.h"
 #include <string.h>
 #include <iostream>
-#include <istream>
+//#include <istream>
 
 using namespace std;
 
@@ -22,22 +22,22 @@ using namespace std;
  * @param buffer[] Vector unidimensional con los valores de cada uno de los pixeles de la imagen
  * @param mensaje[] Cadena de texto a ocultar en la imagen.
  **********************************************************************************/
-void oculta_SMS_en_PGM(char inputImage[], int& filas, int& columnas,
-		char outputImage[], unsigned char buffer[], char mensaje[]){
+void oculta_archivo_en_PGM(char inputImage[], int& filas, int& columnas,
+		char outputImage[], unsigned char buffer[], char archivo[]){
 
-	int tamTotalImagen = filas*columnas,
-		tamTotalMensaje= (strlen(mensaje)+1)*8; //(strlen(mensaje)+1)*8) -> tamaño cadena +1 (Caracter \0), por 8bits de cada caracter
+	int tamTotalImagen = filas*columnas;
+		//tamTotalMensaje= (strlen(mensaje)+1)*8; //(strlen(mensaje)+1)*8) -> tamaño cadena +1 (Caracter \0), por 8bits de cada caracter
 
 	if (LeerImagenPGM(inputImage, filas, columnas, buffer)) {
-			switch (ocultar(buffer, tamTotalImagen, mensaje, tamTotalMensaje)) {
+			switch (ocultar(buffer, tamTotalImagen, archivo)) {
 				case 0:
 					if (EscribirImagenPGM(strcat(outputImage,".pgm"), buffer, filas, columnas))
-						cout << "Ok" << endl;
+						cout << "Se ha ocultado correctamente el archivo " << archivo << " en " << outputImage << endl;
 					else
-						cout << "Error al escribir la imagen" << endl;
+						cout << "Error al escribir la imagen " << outputImage << endl;
 					break;
 				case -1:
-					cout << "Imagen demasiado pequeña para sms tan largo";
+					cout << "Imagen demasiado pequeña para el archivo, " << archivo << endl;
 					break;
 			}
 		}
@@ -54,22 +54,22 @@ void oculta_SMS_en_PGM(char inputImage[], int& filas, int& columnas,
  * @param buffer[] Vector unidimensional con los valores de cada uno de los pixeles de la imagen
  * @param mensaje[] Cadena de texto a ocultar en la imagen.
  **********************************************************************************/
-void oculta_SMS_en_PPM(char inputImage[], int& filas, int& columnas,
-		char outputImage[], unsigned char buffer[], char mensaje[]){
+void oculta_archivo_en_PPM(char inputImage[], int& filas, int& columnas,
+		char outputImage[], unsigned char buffer[], char archivo[]){
 
-	int tamTotalImagen = filas*columnas*3,		//(filas*columnas)*3 -> ppm usa 3 bytes por cada pixel,
-		tamTotalMensaje= (strlen(mensaje)+1)*8;
+	int tamTotalImagen = filas*columnas*3;		//(filas*columnas)*3 -> ppm usa 3 bytes por cada pixel,
+		//tamTotalMensaje= (strlen(mensaje)+1)*8;
 
 	if (LeerImagenPPM(inputImage, filas, columnas, buffer)) {
-			switch (ocultar(buffer, tamTotalImagen, mensaje, tamTotalMensaje)) {
+			switch (ocultar(buffer, tamTotalImagen, archivo)) {
 				case 0:
 					if (EscribirImagenPPM(strcat(outputImage,".ppm"), buffer, filas, columnas))
-						cout << "Ok" << endl;
+						cout << "Se ha ocultado correctamente el archivo " << archivo << " en " << outputImage << endl;
 					else
-						cout << "Error al escribir la imagen" << endl;
+						cout << "Error al escribir la imagen " << outputImage << endl;
 					break;
 				case -1:
-					cout << "Imagen demasiado pequeña para sms tan largo";
+					cout << "Imagen demasiado pequeña para el archivo " << archivo;
 					break;
 			}
 		}
@@ -78,29 +78,26 @@ void oculta_SMS_en_PPM(char inputImage[], int& filas, int& columnas,
 }
 
 int main(int argc, char* argv[]){
-	//TODO: Controlar los argumentos que se pasan
-
-	const int MAX_BUFFER = 1000000;
-	const int MAX_NAME	 = 100;
-	const int MAX_SMS	 = 125000;
-
-	unsigned char buffer[MAX_BUFFER];
+	const int MAX_FILE_NAME	 = 50;
 
 	int filas, columnas;
-	char mensaje[MAX_SMS];
 
 	TipoImagen tipo = LeerTipoImagen(argv[1], filas, columnas);
 
-	cin.getline(mensaje, 125000, '\n');
+	const int MAX_BUFFER = filas * columnas;
+	unsigned char buffer[MAX_BUFFER];
+
+	char archivo[MAX_FILE_NAME];
+	cin.getline(archivo, 49, '\n');
 
 	switch (tipo) {
 		case IMG_PGM:
 			cout << "Ocultando...";
-			oculta_SMS_en_PGM(argv[1], filas, columnas, argv[2], buffer, mensaje);
+			oculta_archivo_en_PGM(argv[1], filas, columnas, argv[2], buffer, archivo);
 			break;
 		case IMG_PPM:
 			cout << "Ocultando...";
-			oculta_SMS_en_PPM(argv[1], filas, columnas, argv[2], buffer, mensaje);
+			oculta_archivo_en_PPM(argv[1], filas, columnas, argv[2], buffer, archivo);
 			break;
 		case IMG_DESCONOCIDO:
 			cout << "Tipo de imagen desconocida" << endl;
