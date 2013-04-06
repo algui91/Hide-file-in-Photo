@@ -42,6 +42,5 @@ int ocultar(unsigned char[],int , char[]);
   */
 int revelar(unsigned char[],int, char[], int);
 
-//int revelar(int image[], char& menssage[]);
 
 #endif /* CODIFICAR_H_ */

@@ -1,11 +1,10 @@
 /*
- * @file procesar.cpp
+ * @file codificar.cpp
  * @brief Encargada de codificar y descodificar mensajes ocultos
  *  Created on: Mar 15, 2012
  *      @author: Alejandro Alcalde
  */
 #include "../include/codificar.h"
-///#include <iostream>
 #include <fstream>
 #include <string.h>
 
@@ -50,23 +49,23 @@ int write_bit_by_bit(unsigned char buffer[], ifstream& f, int from, int to, char
 }
 
 
-int ocultar(unsigned char buffer[],int tamImage, char sms[]){
+int ocultar(unsigned char buffer[],int tamImage, char archivo[]){
 
-	ifstream f(sms);
+	ifstream f(archivo);
 
 	if (f) {
 
-		strcpy(sms,basename(sms));
+		strcpy(archivo,basename(archivo));
 
 		//Cabecera que indica el comienzo del nombre del archivo
 		buffer[0] = 0xff;
 
 		//Calculo el pixel donde tiene que terminar el nombre del archivo
-		int fin_cabecera = strlen(sms) * 8 +1;
+		int fin_cabecera = strlen(archivo) * 8 +1;
 		buffer[fin_cabecera] = 0xff;
 
 		//Escribo el nombre del archivo a ocultar
-		write_bit_by_bit(buffer, f, 1, strlen(sms), sms, WRITE_FROM_ARRAY);
+		write_bit_by_bit(buffer, f, 1, strlen(archivo), archivo, WRITE_FROM_ARRAY);
 
 		int tamanio_en_bytes = get_file_size(f) /** 8*/;
 
@@ -74,13 +73,13 @@ int ocultar(unsigned char buffer[],int tamImage, char sms[]){
 		// el for acaba cuando escribe todos los caracteres del fichero, hay que calcular
 		// el indice sumando el desplazamiento que ya acarreamos + los bytes del archivo pasados a bits
 		int datos_fichero = fin_cabecera + 1;
-		int ind = write_bit_by_bit(buffer, f, datos_fichero, tamanio_en_bytes, sms, WRITE_FROM_FILE);
+		int ind = write_bit_by_bit(buffer, f, datos_fichero, tamanio_en_bytes, archivo, WRITE_FROM_FILE);
 
 		//Escribo 0xff para indicar EOF de los datos
-		char eof = 0x7f;
-		char* fin_contenido = &eof;
+		unsigned char eof = 0xff;
+		unsigned char* fin_contenido = &eof;
 
-		write_bit_by_bit(buffer, f, ind, 1, fin_contenido, WRITE_FROM_ARRAY);
+		write_bit_by_bit(buffer, f, ind, 2, fin_contenido, WRITE_FROM_ARRAY);
 	}
 	return 0;
 }
@@ -114,17 +113,19 @@ int revelar(unsigned char buffer[], int tamImage, char sms[], int tamSMS){
 	ofstream f(sms);
 	if (f) {
 		//seguimos leyendo hasta que encontremos un byte a 0x7f, que indica el fin del archivo
-		bool fin_datos = false;
+		char fin_datos = 0;
 		int indice = in;
 		value = 0;
-		for (int i = in; i < tamImage && !fin_datos; i++) {
+		for (int i = in; i < tamImage && fin_datos != 2; i++) {
 			for (int k = 0; k < 8; k++)
 				value = value << 1 | (buffer[indice++] & 0x01); //vamos almacenando en value los 8 bits
 			if (value == 0x7f) {
-				fin_datos = true;
+				fin_datos += 1;
+				value = 0;
 				continue;
 			}
-			f.write(&value, 1); //TODO, ir almacenanto en array y luego escribir a archivo
+			f.write(&value, 1);
+			//TODO, ir almacenanto en array y luego escribir a archivo
 			value = 0;
 		}
 	}
